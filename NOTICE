@@ -1,0 +1,19 @@
+Project Invisible FLUX3 includes adapted source from Black Forest Labs:
+https://github.com/black-forest-labs/flux-3-image-klein
+Source revision: e53f4ea697fe45db8f38fca91a90f5623f7f8f37
+Original source is Apache-2.0 licensed; its license is preserved at
+flux3_forge/vendor/flux3/LICENSE.
+
+Changes: package-relative imports, local-only component loading, automatic
+PyTorch attention dispatch, and an FP8 GEMM compatibility path that applies
+rowwise scaling after scalar-scaled FP8 matrix multiplication.
+
+Model weights are excluded and remain subject to their separate licenses.
+
+Additional source adaptations include bounded FP8 row buffers, full-spatial
+streamed VAE normalization/convolutions/upsampling/residual projections, and
+extension-owned hooks to Forge attention and Spectrum feature forecasting.
+
+Spectrum algorithm reference: https://github.com/hanjq17/Spectrum
+Revision: 4e41f91c93ff66b045332530dd7bcb4c60eafbab
+Copyright 2026 Jiaqi Han. MIT notice: flux3_forge/vendor/SPECTRUM_LICENSE.
