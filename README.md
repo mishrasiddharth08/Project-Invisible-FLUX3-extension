@@ -79,4 +79,6 @@ Only the existing original rowwise FP8 + BF16 HF Qwen3VL package is real-tested 
 
 ## Publication status (2026-10-18)
 
-GPU validation is paused while AI Toolkit training runs. No Forge restart, CUDA import/allocation, dependency installation or model download was performed for this publication. Resume only after confirmed training completion and safe Forge idle checks; elapsed time or a single utilization sample is insufficient. See [validation](docs/VALIDATION.md) for current evidence, known limits and the sequential acceptance plan. New workflow controls, when present on the experimental branch, default off; they do not activate Base, Comfy ConvRot, NVFP4 or PUP inference.
+The earlier training pause has ended; see the dated post-training validation record. Historical pause note: No Forge restart, CUDA import/allocation, dependency installation or model download was performed for this publication. Resume only after confirmed training completion and safe Forge idle checks; elapsed time or a single utilization sample is insufficient. See [validation](docs/VALIDATION.md) for current evidence, known limits and the sequential acceptance plan. New workflow controls, when present on the experimental branch, default off; they do not activate Base, Comfy ConvRot, NVFP4 or PUP inference.
+
+Current post-training evidence: [2026-10-18 validation](docs/POST-TRAINING-20261018.md). Training completed; bounded real generation tests passed. Remaining format, hardware and full-acceptance limits still apply.
