@@ -1,4 +1,4 @@
-"""Experimental complete-profile builder. Not enabled in the live bridge.
+"""Experimental complete-profile builder. Enabled only through the explicit experimental matched-profile setting.
 
 The official DiT, target-time sampler and encoder tap selection are preserved.
 Requires an independently validated manifest; no download/install fallback.
@@ -18,19 +18,35 @@ def wrap_encoder(model, processor, device, encoder_class):
     model.language_model.to(device)
     return encoder
 
+def materialize_qwen_rotary(model, config):
+    """Rebuild only derived nonpersistent RoPE buffers after meta construction.
+
+    Checkpoint parameters still load strictly; no uninitialized weight fallback.
+    Use the installed Transformers constructors to retain its exact RoPE rules.
+    """
+    from transformers.models.qwen3_vl.modeling_qwen3_vl import Qwen3VLTextRotaryEmbedding,Qwen3VLVisionRotaryEmbedding
+    with torch.device('cpu'):
+        model.language_model.rotary_emb=Qwen3VLTextRotaryEmbedding(config.text_config,device='cpu')
+        v=config.vision_config
+        model.visual.rotary_pos_emb=Qwen3VLVisionRotaryEmbedding(v.hidden_size//v.num_heads//2)
+    remaining=[name for name,buf in model.named_buffers() if buf.is_meta]
+    if remaining:raise ValueError('Unmaterialized encoder buffers: '+str(remaining))
+    return model
+
 def _factories():
+    from .comfy_checkpoint_layout import load_dense_dit
     from .vendor.flux3.pipeline import Pipeline
     from .vendor.flux3.dit import DiT
     from .vendor.flux3.autoencoder import AutoEncoder
     from .vendor.flux3.checkpoint import load_checkpoint,is_flow_map
     from .vendor.flux3.text_encoder import TextEncoder
     from transformers import AutoConfig,AutoProcessor,Qwen3VLModel
-    return dict(pipeline=Pipeline,dit=DiT,vae=AutoEncoder,dense_load=load_checkpoint,
+    return dict(pipeline=Pipeline,dit=DiT,vae=AutoEncoder,dense_load=load_checkpoint,dit_dense_load=load_dense_dit,
                 flow_map=is_flow_map,text_encoder=TextEncoder,config=AutoConfig,
                 processor=AutoProcessor,qwen_base=Qwen3VLModel,packed_load=load_packed)
 
 def build_pipeline(profile,*,device='cpu',offload=True,factories=None):
-    """Build one original distilled pipeline using explicit checkpoint/TE profiles.
+    """Build one explicit Base or distilled pipeline using matched component profiles.
 
     BF16 and INT8 ConvRot are storage labels, not aliases for each other.
     The caller must validate hashes/header contract and canonical model paths.
@@ -51,7 +67,7 @@ def build_pipeline(profile,*,device='cpu',offload=True,factories=None):
     target='cpu' if offload else device
     loader=f['packed_load'] if precision=='int8_convrot' else f['dense_load']
     if precision=='int8_convrot':dit=loader(dit,manifest['checkpoint_path'],device=target,compute_dtype=torch.bfloat16)
-    else:dit=loader(dit,manifest['checkpoint_path'],target,torch.bfloat16)
+    else:dit=f.get('dit_dense_load',loader)(dit,manifest['checkpoint_path'],target,torch.bfloat16)
     pipeline.dits={family:dit}
     if encoder_precision=='bf16' and not manifest.get('text_encoder_weights'):
         # Existing verified original shards: original inference wrapper, offline.
@@ -63,6 +79,7 @@ def build_pipeline(profile,*,device='cpu',offload=True,factories=None):
                 or text.hidden_size!=2560 or text.num_hidden_layers!=36):
             raise ValueError('Matching Qwen3-VL-4B (2560 hidden,36 layers) configuration is required')
         with torch.device('meta'):model=f['qwen_base'](config)
+        if factories is None:materialize_qwen_rotary(model,config)
         # The published encoder has tied/no LM-head weights. FLUX reads taps
         #4,8,...32, all before the final layer36 normalization; base vs causal
         #wrapper tap parity is tested separately. No logits are required.

@@ -65,4 +65,18 @@ class QwenSelectedTapParityTests(unittest.TestCase):
         # Final-layer capture normalization differs; FLUX does not request it.
         self.assertGreater((full.hidden_states[36]-base.hidden_states[36]).abs().max().item(),0)
 
+
+class DerivedRotaryBufferTests(unittest.TestCase):
+    def test_meta_rotary_matches_original_without_materializing_weights(self):
+        from transformers import Qwen3VLConfig,Qwen3VLModel
+        from flux3_forge.comfy_pipeline import materialize_qwen_rotary
+        config=Qwen3VLConfig(text_config={'vocab_size':64,'hidden_size':32,'intermediate_size':64,'num_hidden_layers':1,'num_attention_heads':4,'num_key_value_heads':2,'head_dim':8,'rope_scaling':{'rope_type':'default','mrope_section':[1,1,2],'mrope_interleaved':True}},vision_config={'hidden_size':32,'intermediate_size':64,'depth':1,'num_heads':4,'patch_size':2,'spatial_merge_size':2,'temporal_patch_size':2,'out_hidden_size':32,'num_position_embeddings':64,'deepstack_visual_indexes':[]})
+        original=Qwen3VLModel(config)
+        with torch.device('meta'): model=Qwen3VLModel(config)
+        materialize_qwen_rotary(model,config)
+        self.assertTrue(all(p.is_meta for p in model.parameters()))
+        self.assertFalse(any(b.is_meta for b in model.buffers()))
+        for name,value in original.named_buffers():torch.testing.assert_close(dict(model.named_buffers())[name],value,rtol=0,atol=0)
+        self.assertIs(model.language_model.rotary_emb.original_inv_freq,model.language_model.rotary_emb.inv_freq)
+
 if __name__=='__main__':unittest.main()

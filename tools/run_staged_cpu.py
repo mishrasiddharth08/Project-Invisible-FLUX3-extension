@@ -9,7 +9,7 @@ tempfile.tempdir=str(Path('scratch').resolve())
 def forbidden(*args,**kwargs):raise AssertionError('CUDA initialization is forbidden in this CPU-only suite')
 with patch.object(torch.cuda,'is_available',return_value=False),patch.object(torch.cuda,'is_bf16_supported',return_value=True),patch.object(torch.cuda,'empty_cache',return_value=None),patch.object(torch.cuda,'_lazy_init',side_effect=forbidden):
  suite=unittest.TestSuite()
- for pattern in ['test_comfy_int8.py','test_comfy_profiles.py','test_comfy_pipeline.py','test_comfy_v2.py','test_exact_base_sampling.py']:
+ for pattern in ['test_comfy_checkpoint_layout.py','test_comfy_int8.py','test_comfy_profiles.py','test_comfy_pipeline.py','test_comfy_v2.py','test_exact_base_sampling.py','test_exact_reference_edit.py','test_comfy_native_bridge.py']:
   suite.addTests(unittest.defaultTestLoader.discover('tests',pattern=pattern))
  result=unittest.TextTestRunner(verbosity=2).run(suite)
 assert not torch.cuda.is_initialized(),'CPU-only test isolation failed'

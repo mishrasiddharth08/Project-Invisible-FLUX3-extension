@@ -104,6 +104,9 @@ def inspect_contract(path, module, role, precision):
             def get_slice(self,key): return sources[key].get_slice(key)
             def get_tensor(self,key): return sources[key].get_tensor(key)
         reader = Reader()
+        if role=='dit':
+            from .comfy_checkpoint_layout import ExpandedReader
+            reader=ExpandedReader(reader,module)
         names = {_normal(k, role): k for k in reader.keys()}
         if len(names) != len(reader.keys()): raise ValueError('Ambiguous duplicate normalized tensor keys')
         if role == 'encoder' and 'lm_head.weight' in names:

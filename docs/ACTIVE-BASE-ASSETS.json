@@ -1,5 +1,5 @@
 {
-  "status": "Approval proposal only; no download, authentication or terms acceptance performed",
+  "status": "Downloaded locally with authorization; both payload hashes verified; bounded real Base validation completed",
   "purpose": "Exact supplied active Base branch only: five prompts,1776x1776,25steps,CFG3.5,alpha16",
   "publisher": "black-forest-labs/flux-3-image-klein-comfy",
   "revision": "feef60b0aaf63a4773ace96636ebbcf43b881312",
@@ -8,40 +8,31 @@
       "path": "diffusion_models/flux3-image-klein-base-int8-convrot.safetensors",
       "size_bytes": 5807427339,
       "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/feef60b0aaf63a4773ace96636ebbcf43b881312/diffusion_models/flux3-image-klein-base-int8-convrot.safetensors",
-      "destination": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\Stable-diffusion\\FLUX-3\\flux3-image-klein-base-int8-convrot.safetensors"
+      "destination": "Stable-diffusion\\FLUX-3\\flux3-image-klein-base-int8-convrot.safetensors",
+      "sha256": "8949ecfc1bf3871b08be02cf43ec7276a4914e1a86eade6b5eb8f4204426bc92"
     },
     {
       "path": "text_encoders/qwen3vl_4b_int8_convrot.safetensors",
       "size_bytes": 4858559240,
       "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/feef60b0aaf63a4773ace96636ebbcf43b881312/text_encoders/qwen3vl_4b_int8_convrot.safetensors",
-      "destination": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\text_encoder\\FLUX-3\\qwen3vl_4b_int8_convrot.safetensors"
+      "destination": "text_encoder/FLUX-3/Qwen3-VL-4B-TextEncoder-int8_convrot--For-FLUX-3.safetensors",
+      "sha256": "32de113cbf8282b02cbff0794b637b9d6676da09314a1db5a30bcea9bf4ee01c"
     }
   ],
   "total_new_bytes": 10665986579,
   "reuse": {
-    "path": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\FLUX3\\flux-3-image-klein\\ae.safetensors",
+    "path": "FLUX3/flux-3-image-klein/ae.safetensors",
     "size_bytes": 336211292,
     "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3",
     "download_required": false,
-    "canonical_reference": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\VAE\\FLUX-3\\FLUX.2-VAE--For-FLUX-3.safetensors"
+    "canonical_reference": "VAE/FLUX-3/FLUX.2-VAE--For-FLUX-3.safetensors"
   },
   "excluded": "No optional bypassed PUP or distilled files requested",
   "license_url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/feef60b0aaf63a4773ace96636ebbcf43b881312/LICENSE.md",
   "license": "FLUX Kommunity; separate Apache2 encoder terms per official model card",
   "gate": {
-    "mode": "auto",
-    "account": "No account selected or authenticated in this operation",
-    "shared_with_publisher": [
-      "requesting HF username",
-      "requesting HF email address"
-    ],
-    "access_report_can_include": [
-      "public profile fullname",
-      "request timestamps"
-    ],
-    "additional_form_fields": "None exposed in public metadata; actual signed-in form not inspected",
-    "reference": "https://huggingface.co/docs/hub/models-gated"
+    "policy": "Extension performs no automatic gate acceptance or credential handling; local validation reused existing authorized HF access."
   },
   "identity": "Historical and current publisher Git-LFS pointer objects match; actual downloaded payload must pass pinned content verification",
-  "remaining_after_approval": "Download consent does not establish correctness. Real matching profile load, five-image generation, GUI/save integration, quality/performance and failure recovery remain untested."
+  "remaining_after_approval": "Full profile/hardware/quality matrix remains incomplete; see COMFY-BASE-VALIDATION-20261018.md"
 }

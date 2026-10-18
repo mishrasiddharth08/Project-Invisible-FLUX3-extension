@@ -30,6 +30,10 @@ def _setting(name, default=None):
 
 
 def configured_asset():
+    if bool(_setting('flux3_comfy_enabled',False)):
+        from modules.paths_internal import models_path
+        from .comfy_bridge import configured_asset as comfy_asset
+        return comfy_asset(_setting,models_path)
     model_dir = str(_setting("flux3_model_dir", "") or "").strip()
     if not model_dir:
         return None
@@ -89,8 +93,17 @@ def selected(p=None, name=None):
         ci = next((item for item in sd_models.checkpoints_list.copy().values()
                    if name in (item.name, item.title, getattr(item, "short_title", None))), None)
     if ci is None:
+        matches=[asset for asset in _registered.values() if name in (Path(asset['checkpoint_path']).name,asset.get('display_name'))]
+        if len(matches)>1:raise ValueError('Ambiguous registered FLUX.3 checkpoint alias; select its full dropdown name.')
+        if matches:return matches[0]
+        if bool(_setting('flux3_comfy_enabled',False)) and 'flux3-image-klein-' in str(name).lower():
+            raise ValueError('Experimental matched Comfy profile is unavailable or differs from the selected family/precision. Validate its local checkpoint, encoder and VAE before Generate.')
         return None
-    return _registered.get(str(Path(ci.filename).resolve()).casefold())
+    asset=_registered.get(str(Path(ci.filename).resolve()).casefold())
+    parent=Path(ci.filename).parent
+    if asset is None and bool(_setting('flux3_comfy_enabled',False)) and parent.name.casefold()=='flux-3' and parent.parent.name.casefold()=='stable-diffusion':
+        raise ValueError('Experimental matched Comfy profile is unavailable or differs from the selected family/precision. Validate its local checkpoint, encoder and VAE before Generate.')
+    return asset
 
 
 def _replace(owner, name, replacement):
@@ -100,11 +113,12 @@ def _replace(owner, name, replacement):
 
 
 def _release():
-    try:
-        from .runtime import unload
-        unload()
-    except Exception as error:
-        print(f"{TAG} unload warning: {error}")
+    for module_name in ('runtime','comfy_bridge'):
+        try:
+            from importlib import import_module
+            import_module('.'+module_name,__package__).unload()
+        except Exception as error:
+            print(f"{TAG} {module_name} unload warning: {error}")
 
 
 def refresh():
@@ -221,6 +235,12 @@ def register_settings():
     from modules import shared
     section = ("flux3", "Project Invisible FLUX.3")
     options = {
+        'flux3_comfy_enabled': shared.OptionInfo(False,'Experimental matched Comfy profiles (requires verified local components; separate from the original FP8 route)',section=section),
+        'flux3_comfy_family': shared.OptionInfo('base','Experimental Comfy model family',gr.Dropdown,{'choices':['base','distilled']},section=section),
+        'flux3_comfy_precision': shared.OptionInfo('int8_convrot','Experimental Comfy checkpoint storage',gr.Dropdown,{'choices':['int8_convrot','bf16']},section=section),
+        'flux3_comfy_encoder_precision': shared.OptionInfo('int8_convrot','Experimental Comfy Qwen3-VL-4B storage',gr.Dropdown,{'choices':['int8_convrot','bf16']},section=section),
+        'flux3_comfy_alpha': shared.OptionInfo(16.0,'Experimental Comfy schedule alpha',gr.Number,section=section),
+        'flux3_comfy_seed_bits': shared.OptionInfo('64','Experimental Comfy seed width',gr.Dropdown,{'choices':['32','64']},section=section),
         "flux3_workflow_controls": shared.OptionInfo(False, "Experimental workflow controls (GPU validation pending)", section=section),
         "flux3_alpha": shared.OptionInfo(6.93, "Experimental FLUX.3 schedule alpha", gr.Number, section=section),
         "flux3_seed_bits": shared.OptionInfo("32", "Experimental seed width", gr.Dropdown, {"choices": ["32", "64"]}, section=section),
@@ -252,7 +272,7 @@ def _as_list(value, count, label):
     return values
 
 
-def _validate_processing(p):
+def _validate_processing(p, model_family="distilled"):
     if not bool(_setting("flux3_caption_acknowledged", False)):
         raise ValueError("Open Settings > Project Invisible FLUX.3 and acknowledge the full-caption requirement.")
     negatives = getattr(p, "negative_prompt", "")
@@ -260,7 +280,10 @@ def _validate_processing(p):
     if any(str(value or "").strip() for value in negatives):
         raise ValueError("FLUX.3 does not support negative prompts. Clear the negative prompt box.")
     cfg = float(getattr(p, "cfg_scale", 1.0))
-    if not math.isfinite(cfg) or abs(cfg - 1.0) > 1e-6:
+    if model_family == 'base':
+        if not math.isfinite(cfg) or not 0 <= cfg <= 20:
+            raise ValueError('Experimental Base CFG must be finite0..20.')
+    elif not math.isfinite(cfg) or abs(cfg - 1.0) > 1e-6:
         raise ValueError("FLUX.3 requires CFG scale 1. Set CFG to 1.")
     if float(getattr(p, "subseed_strength", 0.0) or 0.0) != 0.0:
         raise ValueError("FLUX.3 variation seed strength is not supported. Set it to 0.")
@@ -324,11 +347,24 @@ def generate(p, asset):
     source_protection = None
     with _lock:
         try:
-            _validate_processing(p)
+            comfy_profile=asset.get('comfy_profile')
+            _validate_processing(p,asset.get('model_family','distilled'))
             experimental_workflow = bool(_setting("flux3_workflow_controls", False))
             workflow_alpha = workflow_support.alpha(_setting("flux3_alpha", 6.93)) if experimental_workflow else 6.93
             workflow_bits = workflow_support.seed_bits(_setting("flux3_seed_bits", "32")) if experimental_workflow else 32
             layout_rows = workflow_support.elements(_setting("flux3_layout_elements", "[]")) if experimental_workflow else []
+            if comfy_profile is not None:
+                experimental_workflow=True
+                workflow_alpha=workflow_support.alpha(_setting('flux3_comfy_alpha',16.0))
+                workflow_bits=workflow_support.seed_bits(_setting('flux3_comfy_seed_bits','64'))
+                if layout_rows:raise ValueError('Layout boxes are not accepted on experimental Comfy profiles.')
+                overrides=getattr(p,'override_settings',{}) or {}
+                if overrides.get('forge_additional_modules') or overrides.get('sd_vae') not in (None,'','Automatic','None'):
+                    raise ValueError('Matched Comfy profiles own their pinned Qwen3-VL encoder and FLUX2 VAE; incompatible external component overrides are not supported.')
+                if bool(_setting('flux3_spectrum',False)):
+                    raise ValueError('Spectrum is not validated for experimental Comfy profiles.')
+                if getattr(p,'sampler_name','Euler')!='Euler' or getattr(p,'scheduler',None) not in (None,'Automatic','Simple'):
+                    raise ValueError('Experimental Comfy profiles implement Euler with Simple schedule only.')
             source_protection = protection.prepare(p)
             if source_protection and not getattr(p, "do_not_save_samples", False) and shared.opts.samples_save and shared.opts.samples_format.lower() != "png":
                 raise ValueError("Source protection requires PNG saving for pixel-exact protected source pixels.")
@@ -342,7 +378,7 @@ def generate(p, asset):
                 raise ValueError("FLUX.3 steps must be between 1 and 100.")
             positive = _as_list(getattr(p, "prompt", ""), count, "Prompt")
             negative = _as_list(getattr(p, "negative_prompt", ""), count, "Negative prompt")
-            seed_values = _seeds(p, count)
+            seed_values = (workflow_support.seeds(getattr(p,'seed',-1),count,workflow_bits) if comfy_profile is not None else _seeds(p,count))
             refs = [image.convert("RGB") for image in (getattr(p, "init_images", None) or []) if image is not None]
             if refs and not bool(_setting("flux3_reference_acknowledged", False)):
                 raise ValueError("Acknowledge FLUX.3 reference-image behavior in Settings before img2img use.")
@@ -355,12 +391,14 @@ def generate(p, asset):
                 prompt, adapters = _resolve_adapters(prompt, getattr(p, "extra_network_data", None))
                 prompt = workflow_support.caption(prompt, layout_rows)
                 prepared.append((prompt, adapters))
+            if comfy_profile is not None and any(adapters for _,adapters in prepared):
+                raise ValueError('Adapters are not validated for experimental Comfy profiles; clear target LoRA tags.')
             from backend import memory_management
             memory_management.unload_all_models()
             shared.state.job_count = count
             shared.state.sampling_steps = int(p.steps)
             p.sd_model_name = Path(asset["checkpoint_path"]).stem
-            p.sampler_name = "FLUX.3 official flow-map"
+            p.sampler_name = 'FLUX.3 Base Euler/simple' if asset.get('model_family')=='base' else 'FLUX.3 official flow-map'
 
             def cancelled():
                 return bool(shared.state.interrupted or shared.state.skipped)
@@ -383,7 +421,12 @@ def generate(p, asset):
                 request.update({"alpha": workflow_alpha, "seed_bits": workflow_bits})
                 request["attention_backend"] = str(_setting("flux3_attention_backend", "auto"))
                 request["spectrum"] = bool(_setting("flux3_spectrum", False))
-                image, metadata = runtime.generate(request, progress, cancelled)
+                engine=runtime
+                if comfy_profile is not None:
+                    from . import comfy_bridge
+                    engine=comfy_bridge
+                    request.update(comfy_profile=comfy_profile,cfg=float(p.cfg_scale),exact_workflow=True,reference_edit=bool(refs),negative_prompt='')
+                image, metadata = engine.generate(request, progress, cancelled)
                 runner = getattr(p, "scripts", None)
                 if runner is not None and hasattr(runner, "postprocess_image"):
                     from modules.scripts import PostprocessImageArgs
@@ -405,7 +448,7 @@ def generate(p, asset):
                                    "FLUX.3 protected black pixels":source_protection.protected_pixels,
                                    "FLUX.3 protection mask controls":"raw alpha; no blur, crop or inversion"})
                 p.extra_generation_params.update(extras)
-                info = (f"{prompt}\nSteps: {p.steps}, Sampler: {p.sampler_name}, CFG scale: 1, Seed: {seed}, "
+                info = (f"{prompt}\nSteps: {p.steps}, Sampler: {p.sampler_name}, CFG scale: {float(p.cfg_scale)}, Seed: {seed}, "
                         f"Size: {p.width}x{p.height}, Model: {p.sd_model_name}, FLUX.3 precision: {asset['quantization']}, "
                         f"FLUX.3 memory mode: {request['memory_mode']}, FLUX.3 adapters: {len(adapters)}, "
                         f"FLUX.3 alpha: {workflow_alpha}, FLUX.3 seed bits: {workflow_bits}, FLUX.3 layout elements: {len(layout_rows)}, "

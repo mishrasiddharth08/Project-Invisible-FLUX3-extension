@@ -1,4 +1,4 @@
-"""Explicit experimental runtime, staged only. No live bridge registration."""
+"""Explicit experimental runtime, staged only. Native routing requires the explicit experimental profile setting."""
 import gc
 from collections import OrderedDict
 import torch
@@ -26,7 +26,8 @@ class ExperimentalRuntime(RuntimeModel):
             self.pipeline = build_pipeline(profile, device='cuda' if memory_mode=='resident' else 'cpu', offload=memory_mode=='balanced')
             bound_vae_convolutions(self.pipeline.autoencoder)
         except Exception as error:
-            failure = f'{type(error).__name__}: {error}'
+            import traceback
+            failure = traceback.format_exc()
         if failure:
             self.unload()
             raise RuntimeError('Experimental profile construction failed and was released: '+failure)

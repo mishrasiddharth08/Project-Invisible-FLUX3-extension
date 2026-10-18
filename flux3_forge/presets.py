@@ -23,7 +23,8 @@ def register():
     if checkpoint is None: return False
     arch = _member(presets.PresetArch)
     presets.SAMPLERS[arch] = 'Euler'; presets.SCHEDULERS[arch] = 'Automatic'
-    presets.STEPS[arch] = 16; presets.CFG[arch] = 1.0
+    is_base=bool(bridge._setting('flux3_comfy_enabled',False)) and bridge._setting('flux3_comfy_family','base')=='base'
+    presets.STEPS[arch] = 25 if is_base else 16; presets.CFG[arch] = 3.5 if is_base else 1.0
     templates = {}; presets.register(templates)
     for key,info in templates.items():
         if (key.startswith(NAME+'_') or key.endswith('_'+NAME)) and key not in shared.opts.data_labels:

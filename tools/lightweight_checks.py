@@ -37,7 +37,7 @@ class Integration(unittest.TestCase):
   append=next(n.lineno for n in calls if isinstance(n.func,ast.Attribute) and n.func.attr=='caption')
   self.assertLess(resolve,append)
 suite=unittest.defaultTestLoader.loadTestsFromTestCase(Integration)
-for name,path in [('bridge_checks',ROOT/'tests/test_bridge.py'),('workflow_checks',ROOT/'tests/test_workflow_support.py'),('exact_preview_save',ROOT/'tests/test_exact_preview_save.py'),('exact_semantics',ROOT/'tests/test_exact_semantics_public.py')]:
+for name,path in [('bridge_checks',ROOT/'tests/test_bridge.py'),('workflow_checks',ROOT/'tests/test_workflow_support.py'),('exact_preview_save',ROOT/'tests/test_exact_preview_save.py'),('exact_semantics',ROOT/'tests/test_exact_semantics_public.py'),('comfy_native',ROOT/'tests/test_comfy_native_bridge.py')]:
  spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
  suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
 result=unittest.TextTestRunner(verbosity=1).run(suite)

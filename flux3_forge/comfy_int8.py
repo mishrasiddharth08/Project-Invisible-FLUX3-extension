@@ -98,7 +98,8 @@ def load_state(module,state,*,device='cpu',compute_dtype=torch.bfloat16,require_
     if compute_dtype not in (torch.float32,torch.float16,torch.bfloat16):raise ValueError('Unsupported compute dtype')
     if full_precision_matrix_mult is not None and not isinstance(full_precision_matrix_mult,bool):
         raise ValueError('Full precision override must be a boolean')
-    state=dict(state);plans=[];consumed=set();has_convrot=False
+    from .comfy_checkpoint_layout import expand_state,attention_metadata
+    state=attention_metadata(expand_state(dict(state),module));plans=[];consumed=set();has_convrot=False
     for key,value in state.items():
         if not key.endswith('.comfy_quant'):continue
         name=key[:-len('.comfy_quant')]

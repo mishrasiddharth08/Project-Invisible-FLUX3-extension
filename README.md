@@ -4,7 +4,9 @@ An **explicit compatibility bridge**, approved separately from the supplied nati
 
 This is not Forge-native engine registration. This Forge snapshot has no public registration contract for FLUX3's three-stream transformer and target-time flow-map sampler. The extension uses checkpoint-scoped, reversible runtime wrappers. No Forge source file, Python environment, GPU library, application server or model weight is installed or changed automatically.
 
-## Setup
+Experimental matched Comfy Base INT8/INT8 support is available on this branch with bounded real/native validation and remains off by default. See [setup, measurements, visual limits and local companion requirements](docs/COMFY-BASE-VALIDATION-20261018.md). The setup and scope below describe the original distilled-package route.
+
+## Setup: original distilled package
 
 1. Put this folder under `extensions/project-invisible-flux3` and restart Forge.
 2. Obtain access to `black-forest-labs/flux-3-image-klein` on Hugging Face and accept its model terms yourself. Download the **official original-format distilled package**, including `model.safetensors`, configuration/manifest, `ae.safetensors`, and the complete `text_encoder/` folder. FP8 additionally needs `variants/fp8r/`. Weights are not included.
@@ -13,9 +15,9 @@ This is not Forge-native engine registration. This Forge snapshot has no public 
 
 FLUX3's authors require expanded scene captions for intended quality. Run their prompt upsampler or another suitable language model first and paste its resulting caption into Forge. This version does not silently download or run the separate 9B upsampler. Short prompts may give generic results. Confirm the caption setting before generation.
 
-After you accept access terms and sign in locally with `hf auth login`, `tools/download_model.py --destination <folder> --quantization fp8` downloads only the original components and selected variant. Run it with Forge's Python. This is a separate explicit download action, never a Forge startup step. Downloads and access terms require their separate explicit approval; the pending BF16/INT8 bundle is not approved by general testing/repair requests.
+After you accept access terms and sign in locally with `hf auth login`, `tools/download_model.py --destination <folder> --quantization fp8` downloads only the original components and selected variant. Run it with Forge's Python. This is a separate explicit download action, never a Forge startup step. Downloads and access terms require their separate explicit approval; additional untested BF16/distilled/PUP downloads require their own approval. The separately approved local Base INT8/INT8 validation is documented in the link above.
 
-## Scope
+## Scope: original distilled route
 
 - Distilled FLUX3 original-format BF16 and rowwise FP8; prompt-to-image and reference editing, subject to local component validation.
 - The real flow-map sampler receives both the current and target time. CFG has no meaning beyond 1 for this distilled checkpoint.
@@ -25,7 +27,7 @@ After you accept access terms and sign in locally with `hf auth login`, `tools/d
 - Spectrum is an optional, experimental adaptation of spectral hidden-feature forecasting. It preserves current/target flow-map conditioning and recomputes the output head, bounds its cache, checks forecasts and resets every request. Upstream FLUX3 support is not claimed. The initial 512px/16-step test showed only 1.02x speedup, so it is **off by default**. It can change image details; do not assume the paper's FLUX1 speedups apply to FLUX3.
 - Fixed/random seeds, sequential batches, cancellation between steps and standard saving are bridged explicitly.
 - Original FLUX3 linear LoRA, LoKr and LoHa adapters use native `<lora:name:strength>` tags. Multiple adapters stack without replacing or dequantizing the base weights. Only matching original layer names and shapes are accepted; unrelated families and unimplemented adapter types fail clearly. Adapter mathematics has been tested; visual results with real FLUX3 adapters remain unverified.
-- Native FLUX2 checkpoints, ComfyUI int8/ConvRot/NVFP4 files, GGUF/NF4, base FLUX3, ControlNet, native masked inpainting, Hires fix and variation seeds are not supported by this initial bridge. This is not universal quantization or universal adapter compatibility.
+- This original-package route does not load ComfyUI ConvRot profiles; the separate opt-in Base INT8/INT8 route is documented above. Native FLUX2 checkpoints, unvalidated NVFP4/GGUF/NF4, ControlNet, native masked inpainting, Hires fix and variation seeds remain outside the supported scope. This is not universal quantization or universal adapter compatibility.
 - Some extensions depend on intermediate native conditioning or latent callbacks which this compatibility route cannot supply. Standard finishing callbacks supported by the bridge do not establish universal extension compatibility.
 
 No claim of lower-VRAM hardware support, maximum speed, image quality or successful model loading follows from unit tests. See `docs/VALIDATION.md` for the actual evidence.
@@ -84,3 +86,5 @@ The earlier training pause has ended; see the dated post-training validation rec
 Current post-training evidence: [2026-10-18 validation](docs/POST-TRAINING-20261018.md). Training completed; bounded real generation tests passed. Remaining format, hardware and full-acceptance limits still apply.
 
 This experimental branch also contains the [staged exact-workflow V3 runtime and preview/save adapter](docs/EXACT-WORKFLOW-V3.md). It is disabled, unregistered and missing real matching assets; it has not run the full supplied workflow.
+
+Experimental matched Base INT8/INT8 profiles now have bounded real-weight and native Generate/save validation: [results, setup and limitations](docs/COMFY-BASE-VALIDATION-20261018.md). This route stays opt-in; local Refiner/AutoLink companion fixes are separately identified and are not bundled or published here.
