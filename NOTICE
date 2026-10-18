@@ -17,3 +17,5 @@ extension-owned hooks to Forge attention and Spectrum feature forecasting.
 Spectrum algorithm reference: https://github.com/hanjq17/Spectrum
 Revision: 4e41f91c93ff66b045332530dd7bcb4c60eafbab
 Copyright 2026 Jiaqi Han. MIT notice: flux3_forge/vendor/SPECTRUM_LICENSE.
+
+Exact-workflow semantic references: Comfy-Org/ComfyUI98cc0bf84b7cb1383654c5b402e7612d875d6d22 (GPL3 reference excerpts and license under semantic-sources); canonical Easy-Use promptList contract4ba22aa1ec2dd606995574d93d70c6c8a3744859. These packages are not installed or executed by importing the staged adapter.

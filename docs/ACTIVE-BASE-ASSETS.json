@@ -1,0 +1,47 @@
+{
+  "status": "Approval proposal only; no download, authentication or terms acceptance performed",
+  "purpose": "Exact supplied active Base branch only: five prompts,1776x1776,25steps,CFG3.5,alpha16",
+  "publisher": "black-forest-labs/flux-3-image-klein-comfy",
+  "revision": "feef60b0aaf63a4773ace96636ebbcf43b881312",
+  "files": [
+    {
+      "path": "diffusion_models/flux3-image-klein-base-int8-convrot.safetensors",
+      "size_bytes": 5807427339,
+      "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/feef60b0aaf63a4773ace96636ebbcf43b881312/diffusion_models/flux3-image-klein-base-int8-convrot.safetensors",
+      "destination": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\Stable-diffusion\\FLUX-3\\flux3-image-klein-base-int8-convrot.safetensors"
+    },
+    {
+      "path": "text_encoders/qwen3vl_4b_int8_convrot.safetensors",
+      "size_bytes": 4858559240,
+      "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/feef60b0aaf63a4773ace96636ebbcf43b881312/text_encoders/qwen3vl_4b_int8_convrot.safetensors",
+      "destination": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\text_encoder\\FLUX-3\\qwen3vl_4b_int8_convrot.safetensors"
+    }
+  ],
+  "total_new_bytes": 10665986579,
+  "reuse": {
+    "path": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\FLUX3\\flux-3-image-klein\\ae.safetensors",
+    "size_bytes": 336211292,
+    "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3",
+    "download_required": false,
+    "canonical_reference": "G:\\FORGE UI NEO\\sd-webui-forge-classic\\models\\VAE\\FLUX-3\\FLUX.2-VAE--For-FLUX-3.safetensors"
+  },
+  "excluded": "No optional bypassed PUP or distilled files requested",
+  "license_url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/feef60b0aaf63a4773ace96636ebbcf43b881312/LICENSE.md",
+  "license": "FLUX Kommunity; separate Apache2 encoder terms per official model card",
+  "gate": {
+    "mode": "auto",
+    "account": "No account selected or authenticated in this operation",
+    "shared_with_publisher": [
+      "requesting HF username",
+      "requesting HF email address"
+    ],
+    "access_report_can_include": [
+      "public profile fullname",
+      "request timestamps"
+    ],
+    "additional_form_fields": "None exposed in public metadata; actual signed-in form not inspected",
+    "reference": "https://huggingface.co/docs/hub/models-gated"
+  },
+  "identity": "Historical and current publisher Git-LFS pointer objects match; actual downloaded payload must pass pinned content verification",
+  "remaining_after_approval": "Download consent does not establish correctness. Real matching profile load, five-image generation, GUI/save integration, quality/performance and failure recovery remain untested."
+}

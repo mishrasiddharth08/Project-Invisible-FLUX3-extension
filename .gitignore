@@ -5,3 +5,7 @@ weights/
 outputs/
 validation/
 *.safetensors
+
+scratch/
+lightweight-test-tmp/
+*.log

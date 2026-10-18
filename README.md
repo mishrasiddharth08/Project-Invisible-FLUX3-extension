@@ -82,3 +82,5 @@ Only the existing original rowwise FP8 + BF16 HF Qwen3VL package is real-tested 
 The earlier training pause has ended; see the dated post-training validation record. Historical pause note: No Forge restart, CUDA import/allocation, dependency installation or model download was performed for this publication. Resume only after confirmed training completion and safe Forge idle checks; elapsed time or a single utilization sample is insufficient. See [validation](docs/VALIDATION.md) for current evidence, known limits and the sequential acceptance plan. New workflow controls, when present on the experimental branch, default off; they do not activate Base, Comfy ConvRot, NVFP4 or PUP inference.
 
 Current post-training evidence: [2026-10-18 validation](docs/POST-TRAINING-20261018.md). Training completed; bounded real generation tests passed. Remaining format, hardware and full-acceptance limits still apply.
+
+This experimental branch also contains the [staged exact-workflow V3 runtime and preview/save adapter](docs/EXACT-WORKFLOW-V3.md). It is disabled, unregistered and missing real matching assets; it has not run the full supplied workflow.
