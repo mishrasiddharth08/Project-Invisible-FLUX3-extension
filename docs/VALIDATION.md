@@ -1,3 +1,5 @@
+Current status: [Post-training evidence](POST-TRAINING-20261018.md) supersedes the historical training-pause record below. Tests used the identified experimental build; main has not been promoted to that feature branch.
+
 # Validation status — 2026-10-18
 
 This is a compatibility bridge, not full blueprint certification. Earlier real generation used the original rowwise FP8 DiT + matching BF16 HF Qwen3-VL-4B + FLUX2 VAE on RTX 5090. Matching baseline images, repeated release, OOM recovery and bounded allocator runs were recorded locally. Original native FP8 GEMM needed a compatibility fallback on the tested Torch build. 67 regression checks and later 72 checks including preset discovery passed before the training pause. No compatible trained local adapter was found among the inspected headers; mathematical adapter tests are not real-adapter visual validation.
