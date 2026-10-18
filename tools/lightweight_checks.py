@@ -12,6 +12,10 @@ runtime=types.ModuleType('flux3_forge.runtime')
 class Cancelled(Exception):pass
 runtime.Cancelled=Cancelled;runtime.generate=lambda *args:None;runtime.unload=lambda:None
 sys.modules['flux3_forge.runtime']=runtime
+protection=types.ModuleType('flux3_forge.protection')
+protection.enabled=lambda p:False
+protection.prepare=lambda p:None
+sys.modules['flux3_forge.protection']=protection
 spec=importlib.util.spec_from_file_location('bridge_checks',ROOT/'tests/test_bridge.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 result=unittest.TextTestRunner(verbosity=1).run(unittest.defaultTestLoader.loadTestsFromModule(module))
 assert 'torch' not in sys.modules

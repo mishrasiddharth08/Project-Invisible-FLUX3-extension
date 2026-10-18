@@ -52,7 +52,7 @@
     "tools/check_environment.py": "4fb15a393e84858976addecdd3f8a0afbb429505602ea94c4e66cb13e13c2c15",
     "tools/decode_saved.py": "1c65d9ed2bf32d10b6718b1e70ab141958405c7b421960e0841a6d9cedfdf3ed",
     "tools/download_model.py": "b705eac3fec626789b4b99ffe501998d60df0d949ff8201be5ff4e654e8419e0",
-    "tools/lightweight_checks.py": "3e2298816d0b0c477e2697860599e821599c63d99cdacbcb34b98939c7e4978d",
+    "tools/lightweight_checks.py": "860b184c1e4a88912362716f37e371c7b7548ff03dc7ddca77df01101dc3335b",
     "tools/live_check.py": "83413a285441db40548b214f4999bce3235d2efebb04fcf1bd0cffa80265b0c5"
   },
   "weights_included": false,
