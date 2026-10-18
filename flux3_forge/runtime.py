@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from . import workflow_support
+
 import platform
 import gc
 import threading
@@ -152,7 +154,8 @@ class RuntimeModel:
         steps = int(request.get("steps", 16))
         if not 1 <= steps <= 100:
             raise ValueError("steps must be between 1 and 100")
-        seed = int(request.get("seed", 0)) & 0xFFFFFFFF
+        workflow = workflow_support.controls(request)
+        seed = workflow["seed"]
         images = list(request.get("images") or [])
         notify = progress if callable(progress) else lambda step, total: None
         notify(0, steps)
@@ -167,7 +170,7 @@ class RuntimeModel:
         noise = noise.to(torch.bfloat16).float().to("cuda")
         ids = latent_ids(h, w, "cuda")
         packed = pack([[text, cond, (noise, scaled_ids(ids))]])
-        schedule = timesteps(steps, float(request.get("alpha", 6.93)))
+        schedule = timesteps(steps, workflow["alpha"])
         adapter_specs = list(request.get("adapters") or [])
         if len(adapter_specs) > 8:
             raise ValueError("at most 8 stacked adapters are supported")
@@ -248,6 +251,8 @@ class RuntimeModel:
             "height": image.height,
             "steps": steps,
             "seed": seed,
+            "alpha": workflow["alpha"],
+            "seed_bits": workflow["seed_bits"],
             "references": len(images),
             "adapters": len(adapter_specs),
             "memory_mode": self.memory_mode,
@@ -293,6 +298,7 @@ def load(request: dict) -> RuntimeModel:
 
 def generate(request: dict, progress=None, cancelled=None):
     """Return ``(PIL.Image, metadata)`` using official Klein components."""
+    workflow_support.controls(request)  # Fail before loading weights or allocating CUDA.
     try:
         with _LOCK:
             return load(request).generate(request, progress, cancelled)

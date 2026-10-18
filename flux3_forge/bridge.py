@@ -10,6 +10,7 @@ import sys
 import threading
 
 from . import protection
+from . import workflow_support
 
 TAG = "[Invisible-FLUX3]"
 _installed = False
@@ -220,6 +221,10 @@ def register_settings():
     from modules import shared
     section = ("flux3", "Project Invisible FLUX.3")
     options = {
+        "flux3_workflow_controls": shared.OptionInfo(False, "Experimental workflow controls (GPU validation pending)", section=section),
+        "flux3_alpha": shared.OptionInfo(6.93, "Experimental FLUX.3 schedule alpha", gr.Number, section=section),
+        "flux3_seed_bits": shared.OptionInfo("32", "Experimental seed width", gr.Dropdown, {"choices": ["32", "64"]}, section=section),
+        "flux3_layout_elements": shared.OptionInfo("[]", "Experimental layout JSON: id, bbox [top,left,bottom,right] (0-1000), desc; use matching <id> in caption", gr.Textbox, {"lines": 5}, section=section),
         "flux3_model_dir": shared.OptionInfo("", "Local official FLUX.3 package folder", section=section),
         "flux3_quantization": shared.OptionInfo("bf16", "FLUX.3 precision", gr.Dropdown,
                                                 {"choices": ["bf16", "fp8"]}, section=section),
@@ -299,6 +304,8 @@ def _resolve_adapters(prompt, existing=None):
 
 
 def _seeds(p, count):
+    if bool(_setting("flux3_workflow_controls", False)):
+        return workflow_support.seeds(getattr(p, "seed", -1), count, _setting("flux3_seed_bits", "32"))
     raw = getattr(p, "seed", -1)
     if isinstance(raw, list):
         values = _as_list(raw, count, "Seed")
@@ -318,6 +325,10 @@ def generate(p, asset):
     with _lock:
         try:
             _validate_processing(p)
+            experimental_workflow = bool(_setting("flux3_workflow_controls", False))
+            workflow_alpha = workflow_support.alpha(_setting("flux3_alpha", 6.93)) if experimental_workflow else 6.93
+            workflow_bits = workflow_support.seed_bits(_setting("flux3_seed_bits", "32")) if experimental_workflow else 32
+            layout_rows = workflow_support.elements(_setting("flux3_layout_elements", "[]")) if experimental_workflow else []
             source_protection = protection.prepare(p)
             if source_protection and not getattr(p, "do_not_save_samples", False) and shared.opts.samples_save and shared.opts.samples_format.lower() != "png":
                 raise ValueError("Source protection requires PNG saving for pixel-exact protected source pixels.")
@@ -342,6 +353,7 @@ def generate(p, asset):
                 if neg.strip():
                     raise ValueError("FLUX.3 does not support negative prompts, including negative prompt styles.")
                 prompt, adapters = _resolve_adapters(prompt, getattr(p, "extra_network_data", None))
+                prompt = workflow_support.caption(prompt, layout_rows)
                 prepared.append((prompt, adapters))
             from backend import memory_management
             memory_management.unload_all_models()
@@ -368,6 +380,7 @@ def generate(p, asset):
                            "memory_mode": str(_setting("flux3_memory_mode", "balanced")), "prompt": prompt,
                            "width": int(p.width), "height": int(p.height), "steps": int(p.steps),
                            "seed": seed, "images": refs, "adapters": adapters}
+                request.update({"alpha": workflow_alpha, "seed_bits": workflow_bits})
                 request["attention_backend"] = str(_setting("flux3_attention_backend", "auto"))
                 request["spectrum"] = bool(_setting("flux3_spectrum", False))
                 image, metadata = runtime.generate(request, progress, cancelled)
@@ -381,6 +394,8 @@ def generate(p, asset):
                 extras = {"FLUX.3 precision": asset["quantization"],
                           "FLUX.3 memory mode": request["memory_mode"], "FLUX.3 caption mode": "full caption",
                           "FLUX.3 adapters": len(adapters),
+                          "FLUX.3 workflow controls experimental": experimental_workflow,
+                          "FLUX.3 layout elements": len(layout_rows),
                           "FLUX.3 reference mode": "direct conditioning; denoising strength unused" if refs else "none"}
                 extras.update({f"FLUX.3 {key}": value for key, value in (metadata or {}).items()
                                if isinstance(value, (str, int, float, bool))})
@@ -393,6 +408,7 @@ def generate(p, asset):
                 info = (f"{prompt}\nSteps: {p.steps}, Sampler: {p.sampler_name}, CFG scale: 1, Seed: {seed}, "
                         f"Size: {p.width}x{p.height}, Model: {p.sd_model_name}, FLUX.3 precision: {asset['quantization']}, "
                         f"FLUX.3 memory mode: {request['memory_mode']}, FLUX.3 adapters: {len(adapters)}, "
+                        f"FLUX.3 alpha: {workflow_alpha}, FLUX.3 seed bits: {workflow_bits}, FLUX.3 layout elements: {len(layout_rows)}, "
                         f"FLUX.3 prompt upsampled: false, FLUX.3 references: {len(refs)}, "
                         f"FLUX.3 attention: {metadata.get('attention_backend', 'torch-sdpa')}, "
                         f"FLUX.3 Spectrum forecast steps: {metadata.get('spectrum_forecast_steps', 0)}")
