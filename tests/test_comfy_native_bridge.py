@@ -113,4 +113,18 @@ class NativeGenerateRouting(unittest.TestCase):
   with patch.dict(sys.modules,{'modules':modules,'backend':backend}),patch.object(bridge,'_setting',side_effect=lambda k,d=None:True if k.endswith('acknowledged') else d),patch.object(c,'generate') as generate:
    with self.assertRaisesRegex(RuntimeError,'pinned Qwen3-VL'):bridge.generate(p,asset)
    generate.assert_not_called();backend.memory_management.unload_all_models.assert_not_called()
+ def test_generate_prints_sampling_steps_to_forge_console(self):
+  from io import StringIO
+  modules,backend,p,asset=self.fixture()
+  console=modules.shared.progress_print_out=StringIO()
+  def sample(request,progress,cancelled):
+   for step in (0,1,2):
+    progress(step,2)
+   return object(),{}
+  with patch.dict(sys.modules,{'modules':modules,'backend':backend}),patch.object(bridge,'_setting',side_effect=lambda k,d=None:True if k.endswith('acknowledged') else d),patch.object(c,'generate',side_effect=sample):
+   bridge.generate(p,asset)
+  self.assertIn('FLUX.3:',console.getvalue())
+  self.assertIn('0/2',console.getvalue())
+  self.assertIn('2/2',console.getvalue())
+  self.assertEqual(modules.shared.state.sampling_step,2)
 if __name__=='__main__':unittest.main()

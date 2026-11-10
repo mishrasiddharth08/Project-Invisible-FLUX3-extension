@@ -1,6 +1,8 @@
 """Scoped Forge Neo bridge for a validated local FLUX.3 package."""
 from __future__ import annotations
 
+from contextlib import ExitStack
+
 from functools import wraps
 import inspect
 from pathlib import Path
@@ -8,6 +10,8 @@ import math
 import secrets
 import sys
 import threading
+
+from tqdm import tqdm
 
 from . import protection
 from . import workflow_support
@@ -436,11 +440,6 @@ def generate(p, asset):
                 prompt, adapters = prepared[index]
                 seed = seed_values[index]
 
-                def progress(step, total):
-                    shared.state.sampling_step = int(step)
-                    shared.state.sampling_steps = int(total)
-                    shared.state.textinfo = f"FLUX.3: step {step}/{total}"
-
                 request = {"model_dir": asset["model_dir"], "quantization": asset["quantization"],
                            "memory_mode": str(_setting("flux3_memory_mode", "balanced")), "prompt": prompt,
                            "width": int(p.width), "height": int(p.height), "steps": int(p.steps),
@@ -453,7 +452,25 @@ def generate(p, asset):
                     from . import comfy_bridge
                     engine=comfy_bridge
                     request.update(comfy_profile=comfy_profile,cfg=float(p.cfg_scale),exact_workflow=True,reference_edit=bool(refs),negative_prompt='')
-                image, metadata = engine.generate(request, progress, cancelled)
+                with ExitStack() as progress_scope:
+                    bar = None
+
+                    def progress(step, total):
+                        nonlocal bar
+                        step, total = int(step), int(total)
+                        shared.state.sampling_step = step
+                        shared.state.sampling_steps = total
+                        shared.state.textinfo = f"FLUX.3: step {step}/{total}"
+                        if bar is None:
+                            bar = progress_scope.enter_context(tqdm(
+                                total=total, desc="FLUX.3",
+                                file=getattr(shared, "progress_print_out", None),
+                                disable=getattr(getattr(shared, "cmd_opts", None),
+                                                "disable_console_progressbars", False),
+                            ))
+                        bar.update(step - bar.n)
+
+                    image, metadata = engine.generate(request, progress, cancelled)
                 runner = getattr(p, "scripts", None)
                 if runner is not None and hasattr(runner, "postprocess_image"):
                     from modules.scripts import PostprocessImageArgs
