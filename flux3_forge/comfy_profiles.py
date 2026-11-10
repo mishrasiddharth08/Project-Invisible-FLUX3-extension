@@ -54,9 +54,11 @@ def require_profile(profile):
     return profile.manifest
 
 def _canonical(path, parent):
-    path, parent = Path(path).resolve(), Path(parent).resolve()
-    if path.suffix != '.safetensors' or not path.is_relative_to(parent):
-        raise ValueError(f'Asset must remain inside canonical {parent}: {path}')
+    path = Path(path).resolve()
+    parents = parent if isinstance(parent, (tuple, list)) else (parent,)
+    parents = tuple(Path(item).resolve() for item in parents)
+    if path.suffix != '.safetensors' or not any(path.is_relative_to(item) for item in parents):
+        raise ValueError(f'Asset must remain inside a canonical profile folder {parents}: {path}')
     if not path.is_file(): raise ValueError(f'Missing local profile asset: {path}; no download fallback')
     return path
 
@@ -165,7 +167,8 @@ def validate_profile(models_root, *, checkpoint, encoder, vae, support_dir,
     if len(encoder_paths) not in (1,2) or (len(encoder_paths)==2 and encoder_quantization!='bf16'):
         raise ValueError('Use one pinned encoder file or the exact two original BF16 shards')
     encoder_paths = [_canonical(p, root/'text_encoder/FLUX-3') for p in encoder_paths]
-    paths = {'dit':_canonical(checkpoint, root/'Stable-diffusion/FLUX-3'),
+    paths = {'dit':_canonical(checkpoint, (root/'Stable-diffusion/FLUX3 KLEIN',
+                                          root/'Stable-diffusion/FLUX-3')),
              'encoder':encoder_paths,
              'vae':_canonical(vae, root/'VAE/FLUX-3')}
     # Pins are independent of a caller's manifest. Fail on missing weights before meta-model construction.

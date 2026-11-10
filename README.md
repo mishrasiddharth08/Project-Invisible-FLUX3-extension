@@ -4,7 +4,7 @@ An **explicit compatibility bridge**, approved separately from the supplied nati
 
 This is not Forge-native engine registration. This Forge snapshot has no public registration contract for FLUX3's three-stream transformer and target-time flow-map sampler. The extension uses checkpoint-scoped, reversible runtime wrappers. No Forge source file, Python environment, GPU library, application server or model weight is installed or changed automatically.
 
-Experimental matched Comfy Base INT8/INT8 support is available on this branch with bounded real/native validation and remains off by default. See [setup, measurements, visual limits and local companion requirements](docs/COMFY-BASE-VALIDATION-20261018.md). The setup and scope below describe the original distilled-package route.
+Experimental matched Comfy support remains off by default. On an RTX 5090, Klein Base INT8 ConvRot, Distilled INT8 ConvRot, and Distilled BF16 passed generation and Refiner checks with the pinned INT8 encoder. Put the matching diffusion checkpoints in `models/Stable-diffusion/FLUX3 KLEIN`. The older `FLUX-3` folder is also supported. See [setup, measurements, visual limits and local companion requirements](docs/COMFY-BASE-VALIDATION-20261018.md). The setup and scope below describe the original distilled-package route.
 
 ## Setup: original distilled package
 
