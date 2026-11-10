@@ -23,11 +23,43 @@ class NativeProfileTests(unittest.TestCase):
   modules=types.ModuleType('modules');modules.sd_models=types.SimpleNamespace(checkpoint_aliases={},checkpoints_list={});modules.shared=types.SimpleNamespace(opts=types.SimpleNamespace(sd_model_checkpoint='unrelated'))
   with patch.dict(sys.modules,{'modules':modules}),patch.dict(bridge._registered,{},clear=True),patch.object(bridge,'_setting',return_value=True):
    with self.assertRaisesRegex(ValueError,'profile is unavailable'):bridge.selected(name='flux3-image-klein-base-int8-convrot.safetensors')
+ def test_refiner_exact_raw_checkpoint_uses_verified_profile_without_global_enable(self):
+  from pathlib import Path
+  raw=Path('models/Stable-diffusion/FLUX-3/flux3-image-klein-base-int8-convrot.safetensors').resolve()
+  asset={'checkpoint_path':str(raw),'comfy_profile':object()};paths=types.ModuleType('modules.paths_internal');paths.models_path=str(Path('models').resolve())
+  with patch.object(bridge,'selected',return_value=None),patch.object(c,'configured_asset_for_checkpoint',return_value=asset) as configured,patch.dict(sys.modules,{'modules.paths_internal':paths}):
+   self.assertIs(bridge.selected_refiner(filename=str(raw)),asset)
+  configured.assert_called_once();self.assertFalse(bridge._setting('flux3_comfy_enabled',False))
+ def test_refiner_never_substitutes_different_verified_checkpoint(self):
+  from pathlib import Path
+  chosen=Path('models/Stable-diffusion/FLUX-3/flux3-image-klein-base-int8-convrot.safetensors').resolve();other=chosen.with_name('flux3-image-klein-int8-convrot.safetensors')
+  paths=types.ModuleType('modules.paths_internal');paths.models_path=str(Path('models').resolve())
+  with patch.object(bridge,'selected',return_value=None),patch.object(c,'configured_asset_for_checkpoint',return_value={'checkpoint_path':str(other)}),patch.dict(sys.modules,{'modules.paths_internal':paths}):
+   with self.assertRaisesRegex(ValueError,'no different model was substituted'):bridge.selected_refiner(filename=str(chosen))
  def test_default_off_keeps_legacy_validation(self):
   assets=types.ModuleType('flux3_forge.assets');assets.validate_model_dir=Mock(return_value={'legacy':True})
   with patch.dict(sys.modules,{'flux3_forge.assets':assets}),patch.object(bridge,'_setting',side_effect=lambda k,d=None:'legacy' if k=='flux3_model_dir' else d):
    self.assertEqual(bridge.configured_asset(),{'legacy':True})
   assets.validate_model_dir.assert_called_once_with('legacy','bf16')
+ def test_canonical_klein_folder_preferred_with_legacy_fallback(self):
+  import tempfile
+  from pathlib import Path
+  with tempfile.TemporaryDirectory() as folder:
+   root=Path(folder);new=root/'Stable-diffusion'/'FLUX3 KLEIN';old=root/'Stable-diffusion'/'FLUX-3';new.mkdir(parents=True);old.mkdir()
+   name='flux3-image-klein-base-int8-convrot.safetensors';(old/name).touch()
+   self.assertEqual(c._profile_file(root,name),old/name)
+   (new/name).touch();self.assertEqual(c._profile_file(root,name),new/name)
+ def test_selected_distilled_profile_ignores_different_ui_variant(self):
+  import tempfile
+  from pathlib import Path
+  from flux3_forge import comfy_profiles
+  with tempfile.TemporaryDirectory() as folder:
+   root=Path(folder);checkpoint=root/'Stable-diffusion'/'FLUX3 KLEIN'/'flux3-image-klein-int8-convrot.safetensors';checkpoint.parent.mkdir(parents=True);checkpoint.touch()
+   profile=object();settings=lambda key,default=None:{'flux3_comfy_family':'base','flux3_comfy_precision':'bf16','flux3_comfy_encoder_precision':'int8_convrot'}.get(key,default)
+   with patch.object(c,'pinned_file',return_value=root/'encoder.safetensors'),patch.object(comfy_profiles,'validate_profile',return_value=profile) as validate,patch.object(comfy_profiles,'require_profile',return_value={'checkpoint_path':str(checkpoint),'model_family':'distilled','quantization':'int8_convrot'}):
+    asset=c.configured_asset_for_checkpoint(settings,root,checkpoint)
+   self.assertEqual(asset['model_family'],'distilled');self.assertEqual(asset['quantization'],'int8_convrot')
+   self.assertEqual(validate.call_args.kwargs['model_family'],'distilled')
  def test_base_cfg_is_distinct_from_distilled(self):
   p=types.SimpleNamespace(negative_prompt='',cfg_scale=3.5,enable_hr=False,image_mask=None,mask=None,subseed_strength=0)
   with patch.object(bridge,'_setting',return_value=True):

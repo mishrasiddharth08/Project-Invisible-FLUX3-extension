@@ -84,7 +84,7 @@ def register_checkpoint():
     return ci
 
 
-def selected(p=None, name=None):
+def selected(p=None, name=None, strict=True):
     from modules import sd_models, shared
     override = getattr(p, "override_settings", {}) or {}
     name = name or override.get("sd_model_checkpoint") or shared.opts.sd_model_checkpoint
@@ -96,14 +96,41 @@ def selected(p=None, name=None):
         matches=[asset for asset in _registered.values() if name in (Path(asset['checkpoint_path']).name,asset.get('display_name'))]
         if len(matches)>1:raise ValueError('Ambiguous registered FLUX.3 checkpoint alias; select its full dropdown name.')
         if matches:return matches[0]
-        if bool(_setting('flux3_comfy_enabled',False)) and 'flux3-image-klein-' in str(name).lower():
+        if strict and bool(_setting('flux3_comfy_enabled',False)) and 'flux3-image-klein-' in str(name).lower():
             raise ValueError('Experimental matched Comfy profile is unavailable or differs from the selected family/precision. Validate its local checkpoint, encoder and VAE before Generate.')
         return None
     asset=_registered.get(str(Path(ci.filename).resolve()).casefold())
     parent=Path(ci.filename).parent
-    if asset is None and bool(_setting('flux3_comfy_enabled',False)) and parent.name.casefold()=='flux-3' and parent.parent.name.casefold()=='stable-diffusion':
+    if asset is None and strict and bool(_setting('flux3_comfy_enabled',False)) and parent.name.casefold() in ('flux-3','flux3 klein') and parent.parent.name.casefold()=='stable-diffusion':
         raise ValueError('Experimental matched Comfy profile is unavailable or differs from the selected family/precision. Validate its local checkpoint, encoder and VAE before Generate.')
     return asset
+
+
+def selected_refiner(name=None, filename=None):
+    """Resolve an explicit Refiner target without globally enabling Comfy routing."""
+    asset = selected(name=name, strict=False)
+    if asset is not None:
+        return asset
+    path = Path(filename or name or '')
+    if not path.name.casefold().startswith('flux3-image-klein-'):
+        return None
+    try:
+        from modules.paths_internal import models_path
+        from .comfy_bridge import configured_asset_for_checkpoint
+        candidate = configured_asset_for_checkpoint(_setting, models_path, path)
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
+        raise ValueError(
+            'The selected raw FLUX.3 checkpoint has no complete verified local '
+            f'profile, so Refiner will not run it: {error}'
+        ) from error
+    expected = Path(candidate['checkpoint_path']).resolve()
+    actual = path.resolve()
+    if actual != expected:
+        raise ValueError(
+            'The selected raw FLUX.3 checkpoint does not match the verified '
+            f'profile ({expected.name}); no different model was substituted.'
+        )
+    return candidate
 
 
 def _replace(owner, name, replacement):
