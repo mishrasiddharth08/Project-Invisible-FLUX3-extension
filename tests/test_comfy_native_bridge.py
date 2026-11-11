@@ -52,14 +52,25 @@ class NativeProfileTests(unittest.TestCase):
  def test_selected_distilled_profile_ignores_different_ui_variant(self):
   import tempfile
   from pathlib import Path
-  from flux3_forge import comfy_profiles
+  # Test checkpoint routing, not heavyweight profile/weight validation.
+  # Keep the real validator out of this mocked, Torch-free suite.
+  comfy_profiles=types.ModuleType('flux3_forge.comfy_profiles')
+  encoder_pin=(8,'test-encoder-sha256')
+  comfy_profiles.PINNED={('encoder','int8_convrot'):encoder_pin}
   with tempfile.TemporaryDirectory() as folder:
    root=Path(folder);checkpoint=root/'Stable-diffusion'/'FLUX3 KLEIN'/'flux3-image-klein-int8-convrot.safetensors';checkpoint.parent.mkdir(parents=True);checkpoint.touch()
    profile=object();settings=lambda key,default=None:{'flux3_comfy_family':'base','flux3_comfy_precision':'bf16','flux3_comfy_encoder_precision':'int8_convrot'}.get(key,default)
-   with patch.object(c,'pinned_file',return_value=root/'encoder.safetensors'),patch.object(comfy_profiles,'validate_profile',return_value=profile) as validate,patch.object(comfy_profiles,'require_profile',return_value={'checkpoint_path':str(checkpoint),'model_family':'distilled','quantization':'int8_convrot'}):
+   comfy_profiles.validate_profile=Mock(return_value=profile)
+   comfy_profiles.require_profile=Mock(return_value={'checkpoint_path':str(checkpoint),'model_family':'distilled','quantization':'int8_convrot'})
+   with patch.dict(sys.modules,{'flux3_forge.comfy_profiles':comfy_profiles}),patch.object(c,'pinned_file',return_value=root/'encoder.safetensors') as pinned:
     asset=c.configured_asset_for_checkpoint(settings,root,checkpoint)
    self.assertEqual(asset['model_family'],'distilled');self.assertEqual(asset['quantization'],'int8_convrot')
-   self.assertEqual(validate.call_args.kwargs['model_family'],'distilled')
+   comfy_profiles.validate_profile.assert_called_once()
+   self.assertEqual(comfy_profiles.validate_profile.call_args.kwargs['model_family'],'distilled')
+   self.assertEqual(comfy_profiles.validate_profile.call_args.kwargs['quantization'],'int8_convrot')
+   self.assertEqual(comfy_profiles.validate_profile.call_args.kwargs['checkpoint'],checkpoint)
+   comfy_profiles.require_profile.assert_called_once_with(profile)
+   pinned.assert_called_once_with(root/'text_encoder/FLUX-3',encoder_pin)
  def test_base_cfg_is_distinct_from_distilled(self):
   p=types.SimpleNamespace(negative_prompt='',cfg_scale=3.5,enable_hr=False,image_mask=None,mask=None,subseed_strength=0)
   with patch.object(bridge,'_setting',return_value=True):
