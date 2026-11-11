@@ -10,4 +10,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      # The bridge uses Forge's console progress dependency; no inference stack.
+      - name: Install lightweight test dependency
+        run: python -m pip install --disable-pip-version-check "tqdm==4.67.1"
       - run: python -B tools/lightweight_checks.py
